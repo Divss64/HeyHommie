@@ -10,30 +10,36 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const server = http.createServer(app);
+
+// Socket.IO server with CORS for Netlify frontend
 const io = new Server(server, {
   cors: {
-    origin: "*",
+    origin: "*", // You can restrict this to your Netlify domain in production
     methods: ["GET", "POST"]
   }
 });
 
-// Serve static files
+// Optional: Serve static files (if you host frontend here too)
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Handle Socket.IO connections
 io.on('connection', socket => {
-  // User joins room
+  // Join a room
   socket.on('join-room', ({ name, room }, callback) => {
     socket.join(room);
     socket.data.username = name;
     socket.data.room = room;
+
     socket.to(room).emit('user-joined', name);
-    callback(); // Confirm join to client
+
+    if (typeof callback === 'function') {
+      callback(); // Notify client of successful join
+    }
   });
 
-  // User sends message
-  socket.on('send', message => {
+  // Send a message
+  socket.on('send', ({ room, message }) => {
     const senderName = socket.data.username;
-    const room = socket.data.room;
     if (senderName && room) {
       socket.to(room).emit('receive', {
         name: senderName,
@@ -42,7 +48,7 @@ io.on('connection', socket => {
     }
   });
 
-  // User disconnects
+  // Handle disconnect
   socket.on('disconnect', () => {
     const name = socket.data.username;
     const room = socket.data.room;
@@ -52,6 +58,7 @@ io.on('connection', socket => {
   });
 });
 
+// Start the server
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
   console.log(`✅ Server running at: http://localhost:${PORT}`);
