@@ -1,21 +1,20 @@
+// code.js
 const socket = io("https://heyhommie.onrender.com");
-
 
 const loginScreen = document.getElementById('login-screen');
 const chatScreen = document.getElementById('chat-screen');
 const usernameInput = document.getElementById('username-input');
 const roomInput = document.getElementById('room-input');
 const startChatBtn = document.getElementById('start-chat-btn');
-
 const messageInput = document.getElementById('message-input');
 const sendBtn = document.getElementById('send-btn');
 const chatMessages = document.getElementById('chat-messages');
 const roomNameDisplay = document.getElementById('room-name');
+const typingStatus = document.getElementById('typing-status');
 
 let username = "";
 let room = "";
 
-// Start Chat Button - Single Correct Listener
 startChatBtn.addEventListener('click', () => {
   username = usernameInput.value.trim();
   room = roomInput.value.trim();
@@ -28,27 +27,28 @@ startChatBtn.addEventListener('click', () => {
   }
 });
 
-// Send Message
 sendBtn.addEventListener('click', () => {
   const message = messageInput.value.trim();
   if (message !== "") {
     appendMessage(`You: ${message}`, 'right');
-    socket.emit('send', message);
+    socket.emit('send', { room, message });
     messageInput.value = "";
   }
 });
 
-// Append message to chat
+messageInput.addEventListener('input', () => {
+  socket.emit('typing', { name: username, room });
+});
+
 function appendMessage(message, position) {
   const msgDiv = document.createElement('div');
-  msgDiv.classList.add(position); // 'left', 'right', or 'center'
+  msgDiv.classList.add(position);
   msgDiv.classList.add('message');
   msgDiv.innerText = message;
   chatMessages.appendChild(msgDiv);
   chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
-// Emoji support
 const emojiBtn = document.getElementById('emoji-btn');
 const emojiPicker = document.getElementById('emoji-picker');
 
@@ -61,7 +61,6 @@ emojiPicker.addEventListener('emoji-click', event => {
   emojiPicker.style.display = 'none';
 });
 
-// Socket Listeners
 socket.on('user-joined', name => {
   appendMessage(`${name} joined the conversation`, 'center');
 });
@@ -72,4 +71,9 @@ socket.on('receive', data => {
 
 socket.on('user-left', name => {
   appendMessage(`${name} left the conversation`, 'center');
+});
+
+socket.on('show-typing', name => {
+  typingStatus.innerText = `${name} is typing...`;
+  setTimeout(() => typingStatus.innerText = '', 1500);
 });
